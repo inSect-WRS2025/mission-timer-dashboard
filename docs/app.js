@@ -9,6 +9,7 @@
     version: 1,
     displayDecimals: 2,
     piRounding: 'half-up', // 'half-up' | 'floor' | 'ceil'
+    drPolicy: 'all',
     mission: {
       durationSec: 900, // default 15min
       startedAtMs: null,
@@ -25,6 +26,7 @@
       { id: id(), name: 'Robot B', returned: true },
     ],
     tasks: [],
+    profiles: [],
     bridge: {
       url: (location.protocol === 'https:' ? 'wss://localhost:8443/ws' : 'ws://localhost:8000/ws'),
       connected: false,
@@ -62,6 +64,7 @@
       Object.assign(state, {
         displayDecimals: data.displayDecimals ?? 2,
         piRounding: data.piRounding ?? 'half-up',
+        drPolicy: data.drPolicy ?? 'all',
       });
       Object.assign(state.mission, {
         durationSec: data.mission?.durationSec ?? 900,
@@ -86,6 +89,8 @@
         Dt: Number(t.Dt ?? 0),
         note: String(t.note ?? ''),
       })) : [];
+      // profiles
+      state.profiles = Array.isArray(data.profiles) ? data.profiles : [];
     } catch (e) {
       console.warn('load state failed', e);
     }
@@ -136,6 +141,8 @@
   function cmFactor() { return Number(state.mission.cmValue); }
   function dcValue() { return Number(state.mission.dcValue); }
   function allReturned() { return state.robots.length === 0 || state.robots.every(r => !!r.returned); }
+  function anyReturned() { return state.robots.length === 0 || state.robots.some(r => !!r.returned); }
+  function returnedOk() { return state.drPolicy === 'all' ? allReturned() : anyReturned(); }
   function piPoints() {
     const seconds = remainingSec();
     const raw = seconds * (2 / 60);
@@ -145,14 +152,25 @@
     const base = tasksSum() * caFactor() * cmFactor();
     // Apply Dr mode1 at display stage? Current (no Pi) shows Dr effect too
     const withDc = base - dcValue();
-    const withDr = allReturned() ? withDc : withDc * 0.5;
+    const withDr = returnedOk() ? withDc : withDc * 0.5;
     return withDr;
   }
   function ifFinishNowScore() {
     const base = tasksSum() * caFactor() * cmFactor() + piPoints();
     const withDc = base - dcValue();
-    const withDr = allReturned() ? withDc : withDc * 0.5;
+    const withDr = returnedOk() ? withDc : withDc * 0.5;
     return withDr;
+  }
+
+  function scoreBreakdown() {
+    const subtotal = tasksSum();
+    const afterFactors = subtotal * caFactor() * cmFactor();
+    const currentNoPiNoDc = afterFactors;
+    const pi = piPoints();
+    const dc = dcValue();
+    const currentNoPi = (afterFactors - dc) * (returnedOk() ? 1 : 0.5);
+    const finishNow = (afterFactors + pi - dc) * (returnedOk() ? 1 : 0.5);
+    return { subtotal, afterFactors, pi, dc, currentNoPi, finishNow };
   }
 
   // UI binding
@@ -166,9 +184,23 @@
     $('#tasksSum').textContent = round(tasksSum(), dec, 'half-up').toFixed(dec);
     $('#currentScore').textContent = round(currentScoreNoPi(), dec, 'half-up').toFixed(dec);
     $('#finishNowScore').textContent = round(ifFinishNowScore(), dec, 'half-up').toFixed(dec);
+    // breakdown panel content (if visible)
+    const bp = document.querySelector('#breakdownPanel');
+    if (bp && bp.style.display !== 'none') {
+      const b = scoreBreakdown();
+      const fmt = (x) => round(x, dec, 'half-up').toFixed(dec);
+      $('#breakdownContent').innerHTML = `
+        <div><span>Tasks subtotal (Σ)</span><span>${fmt(b.subtotal)}</span></div>
+        <div><span>After Ca/Cm</span><span>${fmt(b.afterFactors)}</span></div>
+        <div><span>Time Bonus (Pi)</span><span>${fmt(b.pi)}</span></div>
+        <div><span>Manual Deduction (Dc)</span><span>${fmt(b.dc)}</span></div>
+        <div><span>Current (no Pi, Dr適用後)</span><span>${fmt(b.currentNoPi)}</span></div>
+        <div><span>If Finish Now (Pi込み, Dr適用後)</span><span>${fmt(b.finishNow)}</span></div>
+      `;
+    }
     // Dr
     const dr = $('#drStatus');
-    if (allReturned()) {
+    if (returnedOk()) {
       dr.textContent = 'All returned';
       dr.className = 'score risk ok';
     } else {
@@ -285,6 +317,7 @@
       e.preventDefault();
       state.displayDecimals = clamp(Number($('#displayDecimals').value) || 2, 0, 3);
       state.piRounding = $('#piRounding').value;
+      state.drPolicy = $('#drPolicy').value; // currently fixed to 'all'
       save();
       $('#settingsDialog').close();
       render();
@@ -314,6 +347,69 @@
     $('#bridgeConnect').addEventListener('click', () => bridgeConnect());
     $('#bridgeDisconnect').addEventListener('click', () => bridgeDisconnect());
     $('#bridgeUrl').addEventListener('change', (e) => { state.bridge.url = e.target.value.trim(); save(); });
+
+    // profiles
+    const list = $('#profilesList');
+    if (list) {
+      list.addEventListener('change', () => { render(); });
+    }
+    const getSelectedProfile = () => {
+      const sel = $('#profilesList');
+      if (!sel || sel.selectedOptions.length === 0) return null;
+      const idv = sel.selectedOptions[0].value;
+      return state.profiles.find(p => p.id === idv) || null;
+    };
+    $('#saveProfile')?.addEventListener('click', () => {
+      const name = ($('#profileName').value || '').trim() || `Profile-${new Date().toISOString().slice(0,16)}`;
+      const p = {
+        id: id(),
+        name,
+        defaultDurationSec: state.mission.durationSec,
+        displayDecimals: state.displayDecimals,
+        piRounding: state.piRounding,
+        caValue: state.mission.caValue,
+        cmValue: state.mission.cmValue,
+        dcValue: state.mission.dcValue,
+        drPolicy: state.drPolicy,
+      };
+      state.profiles.push(p);
+      save();
+      render();
+    });
+    $('#applyProfile')?.addEventListener('click', () => {
+      const p = getSelectedProfile();
+      if (!p) return;
+      if (!confirm(`Apply profile "${p.name}"? Timer will reset.`)) return;
+      state.displayDecimals = p.displayDecimals ?? state.displayDecimals;
+      state.piRounding = p.piRounding ?? state.piRounding;
+      state.drPolicy = p.drPolicy ?? state.drPolicy;
+      state.mission.caValue = p.caValue ?? state.mission.caValue;
+      state.mission.cmValue = p.cmValue ?? state.mission.cmValue;
+      state.mission.dcValue = p.dcValue ?? state.mission.dcValue;
+      applyPreset(Number(p.defaultDurationSec || state.mission.durationSec));
+      render();
+    });
+    $('#deleteProfile')?.addEventListener('click', () => {
+      const p = getSelectedProfile();
+      if (!p) return;
+      if (!confirm(`Delete profile "${p.name}"?`)) return;
+      state.profiles = state.profiles.filter(x => x.id !== p.id);
+      save();
+      render();
+    });
+
+    // export
+    $('#exportTasksCsv')?.addEventListener('click', () => exportTasksCsv());
+    $('#exportStateJson')?.addEventListener('click', () => exportStateJson());
+    $('#exportHistoryCsv')?.addEventListener('click', () => exportHistoryCsv());
+
+    // breakdown toggle
+    $('#toggleBreakdown')?.addEventListener('click', () => {
+      const sec = document.querySelector('#breakdownPanel');
+      if (!sec) return;
+      sec.style.display = (sec.style.display === 'none' || !sec.style.display) ? 'block' : 'none';
+      render();
+    });
   }
 
   function addTask() {
@@ -421,3 +517,49 @@ function renderApp() {
   const fn = window.__app_render;
   if (typeof fn === 'function') fn();
 }
+
+// Export helpers
+function download(filename, text, type = 'text/plain') {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+function exportTasksCsv() {
+  const st = getAppState();
+  const rows = [['enabled','category','typeK','detailK','Ce','Cr','Dt','note']];
+  st.tasks.forEach(t => rows.push([
+    t.enabled ? 1 : 0,
+    t.category,
+    t.typeK,
+    t.detailK,
+    t.Ce,
+    t.Cr,
+    t.Dt,
+    (t.note||'').replace(/[\n\r]/g,' ')
+  ]));
+  const csv = rows.map(r => r.map(v => typeof v==='string' && (v.includes(',')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v).join(',')).join('\n');
+  download(`tasks_${new Date().toISOString().replace(/[:]/g,'-')}.csv`, csv, 'text/csv');
+}
+function exportStateJson() {
+  const st = getAppState();
+  const json = JSON.stringify(st, null, 2);
+  download(`state_${new Date().toISOString().replace(/[:]/g,'-')}.json`, json, 'application/json');
+}
+function exportHistoryCsv() {
+  const st = getAppState();
+  const rows = [['timestamp','tasks_count','robots_count','score_before_reset']];
+  (st.mission.history||[]).forEach(h => rows.push([
+    h.timestamp||'',
+    Array.isArray(h.tasks)?h.tasks.length:0,
+    Array.isArray(h.robots)?h.robots.length:0,
+    Number(h.scoreBeforeReset)||0
+  ]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  download(`history_${new Date().toISOString().replace(/[:]/g,'-')}.csv`, csv, 'text/csv');
+}
+

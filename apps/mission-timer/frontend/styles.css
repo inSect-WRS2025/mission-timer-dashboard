@@ -52,6 +52,12 @@ button:hover { border-color: #334155; }
 .factors-panel, .robots-panel, .tasks-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
 .factors-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
+.profiles-panel, .history-panel, .export-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.profiles-grid { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+.profiles-actions { display: flex; gap: 8px; }
+.profiles-list { grid-column: 1 / -1; }
+.export-actions { display: flex; gap: 8px; }
+
 .bridge-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
 .bridge-grid { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
 .bridge-actions { display: flex; gap: 8px; }
@@ -77,3 +83,6 @@ dialog { border: 1px solid var(--border); background: var(--panel); color: var(-
   .score-panel { grid-template-columns: 1fr; }
   .factors-grid { grid-template-columns: 1fr 1fr; }
 }
+
+.breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.breakdown div { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding: 4px 0; }
