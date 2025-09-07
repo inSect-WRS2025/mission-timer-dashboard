@@ -8,7 +8,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import yaml
@@ -202,6 +201,12 @@ def main():
             config = yaml.safe_load(f) or {}
 
     app = create_app(config, use_mock=args.mock)
+
+    # Lazy import so module import works without uvicorn for tooling/dry-run
+    try:
+        import uvicorn  # type: ignore
+    except Exception as e:
+        raise SystemExit(f"uvicorn not available: {e}. Install with 'pip install uvicorn fastapi pyyaml'.")
 
     uvicorn_kwargs = dict(host=args.host, port=args.port)
     if args.ssl_certfile and args.ssl_keyfile:
