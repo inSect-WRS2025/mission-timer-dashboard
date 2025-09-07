@@ -38,6 +38,7 @@
           <button id="reset">Reset</button>
           <button id="retry">Retry</button>
           <button id="settingsBtn">Settings</button>
+          <button id="helpBtn">Help</button>
         </div>
       </section>
 
@@ -111,6 +112,9 @@
             <button id="saveProfile">Save Current</button>
             <button id="applyProfile" disabled>Apply Selected</button>
             <button id="deleteProfile" disabled>Delete Selected</button>
+            <button id="exportProfilesJson">Export Profiles</button>
+            <button id="importProfilesJson">Import Profiles</button>
+            <input id="importProfilesInput" type="file" accept="application/json,.json" style="display:none" />
           </div>
           <div class="profiles-list">
             <select id="profilesList" size="4"></select>
@@ -218,6 +222,35 @@
         <div class="dialog-actions">
           <button value="cancel">Close</button>
           <button id="saveSettings" value="default">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="helpDialog">
+      <form method="dialog" class="settings-form">
+        <h3>Help</h3>
+        <div>
+          <strong>Scoring flow</strong><br/>
+          Tasks subtotal Σ = sum(10×Type k×Detail k×Cr×Ce − Dt)<br/>
+          Mission factors: ×Ca (if applied) ×Cm<br/>
+          If Finish Now: add Time Bonus (Pi = remaining sec × 2/60)<br/>
+          Deduction: −Dc<br/>
+          Return Penalty: if not all returned, ×0.5
+        </div>
+        <div>
+          <strong>Rounding/Display</strong><br/>
+          Pi: half-up (default). Display decimals: 2 (configurable)
+        </div>
+        <div>
+          <strong>Shortcuts</strong><br/>
+          Space: Start/Pause, R: Retry, N: New Task
+        </div>
+        <div>
+          <strong>ROS2 Bridge</strong><br/>
+          Use ws:// for HTTP, wss:// for HTTPS (GitHub Pages). Backend supports TLS flags.
+        </div>
+        <div class="dialog-actions">
+          <button value="cancel">Close</button>
         </div>
       </form>
     </dialog>

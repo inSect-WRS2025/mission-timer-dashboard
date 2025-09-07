@@ -360,6 +360,7 @@
     });
     // settings
     $('#settingsBtn').addEventListener('click', () => $('#settingsDialog').showModal());
+    $('#helpBtn').addEventListener('click', () => $('#helpDialog').showModal());
     $('#saveSettings').addEventListener('click', (e) => {
       e.preventDefault();
       state.displayDecimals = clamp(Number($('#displayDecimals').value) || 2, 0, 3);
@@ -451,6 +452,55 @@
       state.profiles = state.profiles.filter(x => x.id !== p.id);
       save();
       render();
+    });
+    // profiles import/export
+    $('#exportProfilesJson')?.addEventListener('click', () => {
+      const payload = { profiles: state.profiles };
+      const json = JSON.stringify(payload, null, 2);
+      download(`profiles_${new Date().toISOString().replace(/[:]/g,'-')}.json`, json, 'application/json');
+    });
+    $('#importProfilesJson')?.addEventListener('click', () => {
+      const inp = document.querySelector('#importProfilesInput');
+      if (!inp) return; inp.value = ''; inp.click();
+    });
+    document.querySelector('#importProfilesInput')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result||'{}'));
+          const arr = Array.isArray(data) ? data : (Array.isArray(data.profiles) ? data.profiles : []);
+          if (!Array.isArray(arr)) throw new Error('Invalid profiles JSON');
+          // merge by name (replace existing with same name)
+          arr.forEach(p => {
+            if (!p || !p.name) return;
+            const existing = state.profiles.find(x => x.name === p.name);
+            const merged = {
+              id: id(),
+              name: String(p.name),
+              defaultDurationSec: Number(p.defaultDurationSec ?? 900),
+              displayDecimals: Number(p.displayDecimals ?? state.displayDecimals ?? 2),
+              piRounding: p.piRounding || state.piRounding || 'half-up',
+              caValue: Number(p.caValue ?? 1.0),
+              cmValue: Number(p.cmValue ?? 1.0),
+              dcValue: Number(p.dcValue ?? 0.0),
+              drPolicy: p.drPolicy || state.drPolicy || 'all',
+            };
+            if (existing) {
+              Object.assign(existing, merged);
+            } else {
+              state.profiles.push(merged);
+            }
+          });
+          save();
+          render();
+          alert('Profiles imported.');
+        } catch (e) {
+          alert('Failed to import profiles: '+(e?.message||e));
+        }
+      };
+      reader.readAsText(file);
     });
 
     // export
