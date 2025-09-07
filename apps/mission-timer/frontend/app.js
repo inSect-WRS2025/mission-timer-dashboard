@@ -183,6 +183,8 @@
 
   // UI binding
   function render() {
+    // compact body class
+    document.body.classList.toggle('compact', !!state.compact);
     // time
     $('#remaining').textContent = fmtTime(remainingSec());
     $('#elapsed').textContent = fmtTime(state.mission.durationSec - remainingSec());
@@ -220,6 +222,7 @@
     $('#caValue').value = String(state.mission.caValue);
     $('#cmValue').value = String(state.mission.cmValue);
     $('#dcValue').value = String(state.mission.dcValue);
+    $('#compactLayout')?.toggleAttribute('checked', !!state.compact);
     // robots
     const list = $('#robotsList');
     list.innerHTML = '';
@@ -366,6 +369,7 @@
       state.displayDecimals = clamp(Number($('#displayDecimals').value) || 2, 0, 3);
       state.piRounding = $('#piRounding').value;
       state.drPolicy = $('#drPolicy').value; // currently fixed to 'all'
+      state.compact = !!$('#compactLayout').checked;
       save();
       $('#settingsDialog').close();
       render();

@@ -221,6 +221,8 @@
     $('#tasksSum').textContent = round(tasksSum(), dec, 'half-up').toFixed(dec);
     $('#currentScore').textContent = round(currentScoreNoPi(), dec, 'half-up').toFixed(dec);
     $('#finishNowScore').textContent = round(ifFinishNowScore(), dec, 'half-up').toFixed(dec);
+    // compact body class
+    document.body.classList.toggle('compact', !!state.compact);
     // breakdown panel content (if visible)
     const bp = document.querySelector('#breakdownPanel');
     if (bp && bp.style.display !== 'none') {
@@ -249,6 +251,7 @@
     $('#caValue').value = String(state.mission.caValue);
     $('#cmValue').value = String(state.mission.cmValue);
     $('#dcValue').value = String(state.mission.dcValue);
+    $('#compactLayout')?.toggleAttribute('checked', !!state.compact);
     // robots
     const list = $('#robotsList');
     list.innerHTML = '';
@@ -361,6 +364,7 @@
       state.displayDecimals = clamp(Number($('#displayDecimals').value) || 2, 0, 3);
       state.piRounding = $('#piRounding').value;
       state.drPolicy = $('#drPolicy').value; // currently fixed to 'all'
+      state.compact = !!$('#compactLayout').checked;
       save();
       $('#settingsDialog').close();
       render();
