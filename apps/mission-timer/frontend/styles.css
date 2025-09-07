@@ -36,7 +36,7 @@ button, input, select { color: var(--fg); background: var(--card); border: 1px s
 button { cursor: pointer; }
 button:hover { border-color: #334155; }
 
-.container { max-width: none; width: 100%; margin: 0 auto; padding: 12px; display: grid; gap: 12px; grid-template-columns: 1fr; flex: 1; }
+.container { max-width: none; width: 100%; margin: 0 auto; padding: 12px; display: grid; gap: 12px; grid-template-columns: 1fr; grid-auto-flow: row dense; flex: 1; }
 
 .timer-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
 .timer-display { display: flex; gap: 24px; align-items: baseline; }
@@ -106,8 +106,8 @@ body.compact .history-panel .table-wrap { max-height: 16vh; }
   .timer-panel { grid-column: 1 / span 6; }
   .bridge-panel { grid-column: 7 / span 6; }
   .score-panel { grid-column: 1 / span 12; }
-  .factors-panel { grid-column: 1 / span 6; }
-  .robots-panel { grid-column: 7 / span 6; }
+  .factors-panel { grid-column: 1 / span 8; }
+  .robots-panel { grid-column: 9 / span 4; }
   .tasks-panel { grid-column: 1 / span 8; }
   .profiles-panel { grid-column: 9 / span 4; }
   .export-panel { grid-column: 9 / span 4; }
@@ -117,3 +117,6 @@ body.compact .history-panel .table-wrap { max-height: 16vh; }
 
 .breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .breakdown div { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding: 4px 0; }
+.app-header h1 { line-height: 1.2; }
+h2 { margin: 6px 0 10px; }
+section h2 { font-size: 16px; }
