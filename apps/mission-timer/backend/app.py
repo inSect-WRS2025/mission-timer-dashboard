@@ -47,12 +47,23 @@ class EventBus:
     """Thread-safe event bus delivering to async consumers."""
 
     def __init__(self) -> None:
-        self.q: asyncio.Queue = asyncio.Queue()
+        self.q: Optional[asyncio.Queue] = None
+
+    def attach_loop(self):
+        # Create a queue bound to the current running loop
+        self.q = asyncio.Queue()
 
     async def put(self, item: dict):
+        if self.q is None:
+            # Should not happen once startup completed; drop or buffer
+            return
         await self.q.put(item)
 
     async def get(self):
+        if self.q is None:
+            # Wait until queue is available
+            while self.q is None:
+                await asyncio.sleep(0.01)
         return await self.q.get()
 
     def put_threadsafe(self, loop: asyncio.AbstractEventLoop, item: dict):
@@ -68,6 +79,7 @@ class MissionBridgeNode(Node):  # type: ignore
 
         # Robot returned topics
         self.robot_subs = []
+        subs_dbg = []
         for robot in config.get('robots', []):
             name = robot['name']
             topic = robot['returned_topic']
@@ -80,6 +92,7 @@ class MissionBridgeNode(Node):  # type: ignore
                     if rs.returned != new_val:
                         rs.returned = new_val
                         # emit event
+                        print(f"[bridge/ros] robot_returned {robot_name} -> {new_val}")
                         self.eventbus.put_threadsafe(self.loop, {
                             "type": "robot_returned",
                             "name": robot_name,
@@ -89,15 +102,19 @@ class MissionBridgeNode(Node):  # type: ignore
 
             sub = self.create_subscription(Bool, topic, make_cb(name), 10)
             self.robot_subs.append(sub)
+            subs_dbg.append((name, topic))
 
         # QR topic (optional)
         qr_topic = config.get('qr_topic')
         if qr_topic:
             self.create_subscription(String, qr_topic, self.qr_cb, 10)
+        # Debug print
+        print(f"[bridge/ros] node up. robot_subs={subs_dbg}, qr_topic={qr_topic}")
 
     def qr_cb(self, msg: String):
         entry = {"value": msg.data, "timestamp": time.strftime('%Y-%m-%dT%H:%M:%S')}
         self.state.qr_detections.append(entry)
+        print(f"[bridge/ros] qr {entry['value']} at {entry['timestamp']}")
         self.eventbus.put_threadsafe(self.loop, {"type": "qr", **entry})
 
 
@@ -161,13 +178,17 @@ def create_app(config: dict, use_mock: bool = False):
     state = BridgeState()
     eventbus = EventBus()
 
-    loop = asyncio.get_event_loop()
-
-    # Start ROS or mock threads
-    if use_mock or not ROS_AVAILABLE:
-        start_mock_thread(state, eventbus, loop)
-    else:
-        start_ros_thread(state, eventbus, loop, config)
+    # Defer starting ROS/mock threads until ASGI loop is running
+    @app.on_event("startup")
+    async def on_startup():
+        loop = asyncio.get_running_loop()
+        eventbus.attach_loop()
+        if use_mock or not ROS_AVAILABLE:
+            print(f"[bridge] Mode: MOCK (ROS_AVAILABLE={ROS_AVAILABLE}, use_mock={use_mock})")
+            start_mock_thread(state, eventbus, loop)
+        else:
+            print(f"[bridge] Mode: ROS2 (ROS_AVAILABLE={ROS_AVAILABLE})")
+            start_ros_thread(state, eventbus, loop, config)
 
     @app.get('/api/state')
     async def get_state():
