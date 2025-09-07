@@ -192,6 +192,8 @@ def main():
     parser.add_argument('--host', type=str, default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--mock', action='store_true', help='Run without ROS2 and generate mock events')
+    parser.add_argument('--ssl-certfile', type=str, default=None, help='TLS certificate file for WSS')
+    parser.add_argument('--ssl-keyfile', type=str, default=None, help='TLS private key file for WSS')
     args = parser.parse_args()
 
     config = {}
@@ -200,9 +202,20 @@ def main():
             config = yaml.safe_load(f) or {}
 
     app = create_app(config, use_mock=args.mock)
-    uvicorn.run(app, host=args.host, port=args.port)
+
+    uvicorn_kwargs = dict(host=args.host, port=args.port)
+    if args.ssl_certfile and args.ssl_keyfile:
+        uvicorn_kwargs.update({
+            'ssl_certfile': args.ssl_certfile,
+            'ssl_keyfile': args.ssl_keyfile,
+        })
+        scheme = 'wss'
+    else:
+        scheme = 'ws'
+
+    print(f"[bridge] Starting server at {scheme}://{args.host}:{args.port}/ws")
+    uvicorn.run(app, **uvicorn_kwargs)
 
 
 if __name__ == '__main__':
     main()
-

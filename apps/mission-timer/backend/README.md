@@ -49,7 +49,7 @@ When the frontend is served from GitHub Pages (HTTPS), browsers may block `ws://
 ```bash
 mkcert -install
 mkcert localhost 127.0.0.1 ::1
-# This produces files like: localhost+2.pem and localhost+2-key.pem
+# Produces files like: localhost+2.pem and localhost+2-key.pem
 ```
 
 2) Run the backend with TLS (example on port 8443):
@@ -62,4 +62,6 @@ python apps/mission-timer/backend/app.py --mock \
 
 3) In the frontend, set the bridge URL to `wss://localhost:8443/ws`.
 
-Planned change: add `--ssl-certfile` and `--ssl-keyfile` flags to `app.py` and prefer `wss://localhost:8443/ws` as the suggested URL when the page is loaded over HTTPS.
+Notes:
+- Browsers must trust the certificate (mkcert installs a local CA).
+- Corporate-managed PCs may restrict custom CAs.

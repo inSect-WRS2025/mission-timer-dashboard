@@ -26,7 +26,7 @@
     ],
     tasks: [],
     bridge: {
-      url: 'ws://localhost:8000/ws',
+      url: (location.protocol === 'https:' ? 'wss://localhost:8443/ws' : 'ws://localhost:8000/ws'),
       connected: false,
       ws: null,
       stats: { qr: 0, robot_updates: 0 },
