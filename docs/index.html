@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mission Timer & Scoreboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Mission Timer & Scoreboard</h1>
+      <div class="preset-group">
+        <button data-preset="900">15:00</button>
+        <button data-preset="1200">20:00</button>
+        <button data-preset="1500">25:00</button>
+        <label>
+          Custom (sec)
+          <input id="customDuration" type="number" min="1" step="1" placeholder="900" />
+        </label>
+        <button id="applyCustom">Apply</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="timer-panel">
+        <div class="timer-display">
+          <div>
+            <div class="label">Remaining</div>
+            <div id="remaining" class="time big">15:00</div>
+          </div>
+          <div>
+            <div class="label">Elapsed</div>
+            <div id="elapsed" class="time">00:00</div>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="startPause">Start</button>
+          <button id="reset">Reset</button>
+          <button id="retry">Retry</button>
+          <button id="settingsBtn">Settings</button>
+        </div>
+      </section>
+
+      <section class="bridge-panel">
+        <h2>ROS2 Bridge</h2>
+        <div class="bridge-grid">
+          <label>
+            Server
+            <input id="bridgeUrl" type="text" value="ws://localhost:8000/ws" />
+          </label>
+          <div class="bridge-actions">
+            <button id="bridgeConnect">Connect</button>
+            <button id="bridgeDisconnect">Disconnect</button>
+          </div>
+          <div class="bridge-status">
+            Status: <span id="bridgeStatus">disconnected</span>
+            <span id="bridgeStats"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="score-panel">
+        <div class="score-box">
+          <div class="label">Current Score (no Time Bonus)</div>
+          <div id="currentScore" class="score big">0.00</div>
+        </div>
+        <div class="score-box">
+          <div class="label">If Finish Now (with Time Bonus)</div>
+          <div id="finishNowScore" class="score big">0.00</div>
+        </div>
+        <div class="score-box">
+          <div class="label">Return Penalty</div>
+          <div id="drStatus" class="score risk ok">All returned</div>
+        </div>
+      </section>
+
+      <section class="factors-panel">
+        <h2>Mission Factors</h2>
+        <div class="factors-grid">
+          <label title="Apply autonomy factor manually to this mission">
+            Apply Autonomy Factor
+            <input id="caApply" type="checkbox" />
+          </label>
+          <label title="Autonomy factor (1.0-3.0)">
+            Autonomy Factor
+            <input id="caValue" type="number" min="1" max="3" step="0.1" value="1.0" />
+          </label>
+          <label title="Environment map submission factor (1.0-1.2)">
+            Map Factor
+            <input id="cmValue" type="number" min="1" max="1.2" step="0.05" value="1.0" />
+          </label>
+          <label title="Referee deduction (manual)">
+            Manual Deduction
+            <input id="dcValue" type="number" min="0" step="0.1" value="0" />
+          </label>
+        </div>
+      </section>
+
+      <section class="robots-panel">
+        <h2>Robots (All return policy)</h2>
+        <div id="robotsList" class="robots-list"></div>
+        <div class="robots-actions">
+          <input id="newRobotName" type="text" placeholder="Robot name" />
+          <button id="addRobot">Add Robot</button>
+        </div>
+      </section>
+
+      <section class="tasks-panel">
+        <div class="tasks-header">
+          <h2>Tasks</h2>
+          <button id="addTask">Add Task (N)</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>On</th>
+                <th>Category</th>
+                <th>Type coef</th>
+                <th>Detail coef</th>
+                <th>Env coef</th>
+                <th>Robot coef</th>
+                <th>Task penalty</th>
+                <th>Note</th>
+                <th>Del</th>
+              </tr>
+            </thead>
+            <tbody id="tasksBody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="9" class="sum-cell">
+                  <span title="Sum of task scores before mission factors (Autonomy/Map)">Tasks subtotal</span> = <span id="tasksSum">0.00</span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="settings-form">
+        <h3>Settings</h3>
+        <label>
+          Display decimals
+          <input id="displayDecimals" type="number" min="0" max="3" value="2" />
+        </label>
+        <label>
+          Time Bonus rounding
+          <select id="piRounding">
+            <option value="half-up" selected>Half-up</option>
+            <option value="floor">Floor</option>
+            <option value="ceil">Ceil</option>
+          </select>
+        </label>
+        <div class="dialog-actions">
+          <button value="cancel">Close</button>
+          <button id="saveSettings" value="default">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+  </html>

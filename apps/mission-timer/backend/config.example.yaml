@@ -1,0 +1,11 @@
+# Example configuration for the Mission Timer ROS2 Bridge
+
+robots:
+  - name: Robot A
+    returned_topic: /robot_a/returned   # std_msgs/Bool
+  - name: Robot B
+    returned_topic: /robot_b/returned   # std_msgs/Bool
+
+# Optional QR detection topic (std_msgs/String)
+qr_topic: /mission/qr
+
