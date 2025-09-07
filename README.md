@@ -52,6 +52,43 @@ WRS2025 シミュレーション災害チャレンジの競技中に、時間管
   ```
 - GitHub Pages 経由で使う場合は上記「3)」の手順でTLS起動（`--ssl-certfile/--ssl-keyfile`）し、`wss://` で接続してください。
 
+## ローカル環境の準備（依存関係）
+- 必須（バックエンド実行用）
+  - Python 3.9+（推奨 3.10+）
+  - パッケージ: `fastapi`, `uvicorn`, `pyyaml`
+    - 例: 仮想環境内で `python -m venv .venv && source .venv/bin/activate`（Windowsは `.venv\\Scripts\\activate`）
+    - 依存導入: `pip install fastapi uvicorn pyyaml`
+- 任意（ROS 2 連携時）
+  - ROS 2 ディストリビューション（例: Humble/Foxy 等）と `rclpy`
+  - 実行前に `source /opt/ros/<distro>/setup.bash` などで環境を有効化
+- 任意（GitHub Pages からの接続でTLS/WSSを使う場合）
+  - mkcert（ローカル開発用証明書）
+    - macOS: `brew install mkcert`
+    - Windows: `choco install mkcert`
+    - Linux: ディストリビューションのパッケージ or mkcert の配布手順に従う
+  - セットアップ: `mkcert -install && mkcert localhost 127.0.0.1 ::1`
+  - 生成された `localhost*.pem` と `*-key.pem` を `run_bridge_wss.py` に指定
+
+起動用スクリプト（WSS）
+- 追加済み: `tools/run_bridge_wss.py`
+  - ドライラン（設定確認のみ）: `python tools/run_bridge_wss.py --mock --dry-run`
+  - WSS起動（mkcertで発行した証明書を指定）:
+    - `python tools/run_bridge_wss.py --mock --certfile ./localhost+2.pem --keyfile ./localhost+2-key.pem`
+  - ROS 2 連携: `python tools/run_bridge_wss.py --config apps/mission-timer/backend/config.yaml --certfile ... --keyfile ...`
+
+シェルスクリプト（GitHub Pages 用簡易起動）
+- 追加済み: `tools/start_pages_wss.sh`
+  - 既定: モックでTLS起動（証明書が見つからない場合はWSフォールバック）
+    - `tools/start_pages_wss.sh`
+  - ドライラン（依存未導入でもOK）
+    - `tools/start_pages_wss.sh --dry-run`
+  - 証明書の指定（mkcert生成物を利用）
+    - `CERT=./localhost+2.pem KEY=./localhost+2-key.pem tools/start_pages_wss.sh`
+  - ROS 2 設定を使う（`apps/mission-timer/backend/config.yaml`が存在する場合）
+    - `USE_MOCK=0 tools/start_pages_wss.sh`
+  - ポートやホストの変更
+    - `PORT=9443 HOST=127.0.0.1 tools/start_pages_wss.sh`
+
 ## GitHub Pages の設定
 - リポジトリ Settings → Pages → "Deploy from a branch" → Branch: `main` / Folder: `/docs`
 - Enforce HTTPS: ON（証明書発行に数分かかることがあります）
