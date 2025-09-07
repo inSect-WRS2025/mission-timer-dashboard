@@ -65,3 +65,21 @@ python apps/mission-timer/backend/app.py --mock \
 Notes:
 - Browsers must trust the certificate (mkcert installs a local CA).
 - Corporate-managed PCs may restrict custom CAs.
+## Debugging with ROS 2 mock publishers
+Use the included mock publishers to generate real ROS 2 traffic on your topics.
+
+1) Source ROS 2 and run the mock publishers:
+```bash
+source /opt/ros/<distro>/setup.bash
+python tools/ros2_mock_publishers.py --config apps/mission-timer/backend/config.example.yaml
+```
+
+2) In another terminal, start the backend (WS or WSS as needed):
+```bash
+python apps/mission-timer/backend/app.py --config apps/mission-timer/backend/config.example.yaml --host 127.0.0.1 --port 8000
+# or with TLS on 8443 as shown below
+```
+
+3) In the frontend, connect to the bridge URL (`ws://localhost:8000/ws` or `wss://localhost:8443/ws`).
+
+The UI's bridge status shows counters for QR events, robot updates, estimated ping, and last event time to help diagnose connectivity.

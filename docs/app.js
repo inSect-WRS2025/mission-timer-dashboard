@@ -31,7 +31,7 @@
       url: (location.protocol === 'https:' ? 'wss://localhost:8443/ws' : 'ws://localhost:8000/ws'),
       connected: false,
       ws: null,
-      stats: { qr: 0, robot_updates: 0 },
+      stats: { qr: 0, robot_updates: 0, last_ping_ms: null, last_event_at: null },
     }
   };
   // expose state/render hooks for bridge helpers
@@ -317,7 +317,13 @@
     // bridge
     $('#bridgeUrl').value = state.bridge.url;
     $('#bridgeStatus').textContent = state.bridge.connected ? 'connected' : 'disconnected';
-    $('#bridgeStats').textContent = state.bridge.connected ? ` | qr: ${state.bridge.stats.qr}, robot updates: ${state.bridge.stats.robot_updates}` : '';
+    const stats = state.bridge.stats;
+    const extra = [];
+    extra.push(`qr: ${stats.qr}`);
+    extra.push(`robot updates: ${stats.robot_updates}`);
+    if (stats.last_ping_ms != null) extra.push(`ping: ${Math.round(stats.last_ping_ms)} ms`);
+    if (stats.last_event_at) extra.push(`last evt: ${stats.last_event_at}`);
+    $('#bridgeStats').textContent = state.bridge.connected ? ' | ' + extra.join(', ') : '';
   }
 
   function changed() { save(); render(); }
@@ -520,6 +526,8 @@ function bridgeConnect() {
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
+      const st = getAppState();
+      st.bridge.stats.last_event_at = new Date().toLocaleTimeString();
       handleBridgeEvent(msg);
     } catch {}
   };
@@ -557,6 +565,15 @@ function handleBridgeEvent(evt) {
     }
     case 'qr': {
       appState.bridge.stats.qr++;
+      renderApp();
+      break;
+    }
+    case 'ping': {
+      if (typeof evt.t === 'number') {
+        const nowSec = Date.now() / 1000;
+        const oneWayMs = Math.max(0, (nowSec - evt.t) * 1000);
+        appState.bridge.stats.last_ping_ms = oneWayMs;
+      }
       renderApp();
       break;
     }
