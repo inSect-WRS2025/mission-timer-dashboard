@@ -37,6 +37,7 @@
   // expose state/render hooks for bridge helpers
   window.__app_state = state;
   window.__app_render = () => render();
+  window.__apply_state_object = (data) => { applyStateObject(data); save(); };
 
   // Utilities
   function id() { return Math.random().toString(36).slice(2, 9); }
@@ -94,6 +95,42 @@
     } catch (e) {
       console.warn('load state failed', e);
     }
+  }
+
+  function applyStateObject(data) {
+    Object.assign(state, {
+      displayDecimals: data.displayDecimals ?? state.displayDecimals ?? 2,
+      piRounding: data.piRounding ?? state.piRounding ?? 'half-up',
+      drPolicy: data.drPolicy ?? state.drPolicy ?? 'all',
+    });
+    Object.assign(state.mission, {
+      durationSec: data.mission?.durationSec ?? state.mission.durationSec ?? 900,
+      startedAtMs: null,
+      paused: true,
+      elapsedOffsetMs: 0,
+      caApply: !!(data.mission?.caApply ?? state.mission.caApply),
+      caValue: data.mission?.caValue ?? state.mission.caValue ?? 1.0,
+      cmValue: data.mission?.cmValue ?? state.mission.cmValue ?? 1.0,
+      dcValue: data.mission?.dcValue ?? state.mission.dcValue ?? 0.0,
+      history: Array.isArray(data.mission?.history) ? data.mission.history : (state.mission.history || []),
+    });
+    state.robots = Array.isArray(data.robots)
+      ? data.robots.map(r => ({ id: id(), name: r.name, returned: !!r.returned }))
+      : state.robots;
+    state.tasks = Array.isArray(data.tasks)
+      ? data.tasks.map(t => ({
+          id: id(),
+          enabled: t.enabled ?? true,
+          category: t.category ?? 'M',
+          typeK: Number(t.typeK ?? 1),
+          detailK: Number(t.detailK ?? 1),
+          Ce: Number(t.Ce ?? 1),
+          Cr: Number(t.Cr ?? 1),
+          Dt: Number(t.Dt ?? 0),
+          note: String(t.note ?? ''),
+        }))
+      : state.tasks;
+    state.profiles = Array.isArray(data.profiles) ? data.profiles : (state.profiles || []);
   }
 
   // Timer
@@ -402,6 +439,18 @@
     $('#exportTasksCsv')?.addEventListener('click', () => exportTasksCsv());
     $('#exportStateJson')?.addEventListener('click', () => exportStateJson());
     $('#exportHistoryCsv')?.addEventListener('click', () => exportHistoryCsv());
+    // import
+    $('#importStateJson')?.addEventListener('click', () => {
+      const inp = document.querySelector('#importStateInput');
+      if (!inp) return;
+      inp.value = '';
+      inp.click();
+    });
+    document.querySelector('#importStateInput')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      importStateFromFile(file);
+    });
 
     // breakdown toggle
     $('#toggleBreakdown')?.addEventListener('click', () => {
@@ -430,6 +479,15 @@
 
   // Init
   load();
+  // seed default profiles if none
+  if (!Array.isArray(state.profiles) || state.profiles.length === 0) {
+    state.profiles = [
+      { id: id(), name: 'Qualifier-15m', defaultDurationSec: 900, displayDecimals: 2, piRounding: 'half-up', caValue: 1.0, cmValue: 1.0, dcValue: 0.0, drPolicy: 'all' },
+      { id: id(), name: 'Semi-20m',      defaultDurationSec: 1200, displayDecimals: 2, piRounding: 'half-up', caValue: 1.0, cmValue: 1.0, dcValue: 0.0, drPolicy: 'all' },
+      { id: id(), name: 'Final-25m',     defaultDurationSec: 1500, displayDecimals: 2, piRounding: 'half-up', caValue: 1.0, cmValue: 1.0, dcValue: 0.0, drPolicy: 'all' },
+    ];
+    save();
+  }
   wire();
   render();
   requestAnimationFrame(tick);
@@ -563,3 +621,25 @@ function exportHistoryCsv() {
   download(`history_${new Date().toISOString().replace(/[:]/g,'-')}.csv`, csv, 'text/csv');
 }
 
+function importStateFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(String(reader.result || '{}'));
+      if (typeof data !== 'object' || data == null) throw new Error('Invalid JSON');
+      const st = getAppState();
+      window.__apply_state_object?.(data);
+      if (!window.__apply_state_object) {
+        st.displayDecimals = data.displayDecimals ?? st.displayDecimals;
+        st.piRounding = data.piRounding ?? st.piRounding;
+        st.drPolicy = data.drPolicy ?? st.drPolicy;
+      }
+      renderApp();
+      localStorage.setItem('mission-timer-state', JSON.stringify(st));
+      alert('State imported.');
+    } catch (e) {
+      alert('Failed to import JSON: ' + (e?.message || e));
+    }
+  };
+  reader.readAsText(file);
+}
