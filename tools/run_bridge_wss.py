@@ -121,7 +121,21 @@ def main():
         import uvicorn  # type: ignore
     except Exception as e:
         print(f"[error] uvicorn not available: {e}")
-        print("[hint] Install with: pip install uvicorn fastapi pyyaml")
+        print("[hint] Install with: pip install 'uvicorn[standard]' fastapi pyyaml")
+        return 1
+
+    # Ensure a WS implementation is present to avoid 'Unsupported upgrade request'
+    ws_ok = True
+    try:
+        import websockets  # type: ignore
+    except Exception:
+        try:
+            import wsproto  # type: ignore
+        except Exception:
+            ws_ok = False
+    if not ws_ok:
+        print("[error] No WebSocket transport installed for uvicorn.")
+        print("[hint] Install one of: pip install 'uvicorn[standard]'  (recommended) or pip install websockets")
         return 1
 
     if use_tls:

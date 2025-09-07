@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 import yaml
 
@@ -150,6 +150,14 @@ def create_app(config: dict, use_mock: bool = False):
     app = FastAPI()
     app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
+    # Private Network Access (PNA) compatibility: add header on all responses
+    @app.middleware("http")
+    async def add_pna_header(request, call_next):
+        resp = await call_next(request)
+        # Allow public (Pages) → local (localhost/127.0.0.1) by acknowledging PNA
+        resp.headers['Access-Control-Allow-Private-Network'] = 'true'
+        return resp
+
     state = BridgeState()
     eventbus = EventBus()
 
@@ -164,6 +172,15 @@ def create_app(config: dict, use_mock: bool = False):
     @app.get('/api/state')
     async def get_state():
         return state.snapshot()
+
+    # Health root for PNA probe (Chrome may request '/')
+    @app.get('/')
+    async def root():
+        return {"ok": True, "service": "mission-timer-bridge"}
+
+    @app.get('/favicon.ico')
+    async def favicon():
+        return Response(status_code=204)
 
     @app.websocket('/ws')
     async def ws(ws: WebSocket):

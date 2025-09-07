@@ -55,9 +55,10 @@ WRS2025 シミュレーション災害チャレンジの競技中に、時間管
 ## ローカル環境の準備（依存関係）
 - 必須（バックエンド実行用）
   - Python 3.9+（推奨 3.10+）
-  - パッケージ: `fastapi`, `uvicorn`, `pyyaml`
+  - パッケージ: `fastapi`, `uvicorn[standard]`, `pyyaml`
     - 例: 仮想環境内で `python -m venv .venv && source .venv/bin/activate`（Windowsは `.venv\\Scripts\\activate`）
-    - 依存導入: `pip install fastapi uvicorn pyyaml`
+    - 依存導入: `pip install fastapi 'uvicorn[standard]' pyyaml`
+    - 備考: WebSocket対応のため `uvicorn[standard]` または `websockets`/`wsproto` のいずれかが必須です。
 - 任意（ROS 2 連携時）
   - ROS 2 ディストリビューション（例: Humble/Foxy 等）と `rclpy`
   - 実行前に `source /opt/ros/<distro>/setup.bash` などで環境を有効化
