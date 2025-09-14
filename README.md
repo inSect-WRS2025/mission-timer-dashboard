@@ -57,7 +57,7 @@ WRS2025 シミュレーション災害チャレンジ向けの、時間管理と
 —
 
 ## GitHub Pages（フロントエンド）
-- 公開URL: https://yoshiko-kulala.github.io/mission-timer-dashboard/
+- 公開URL: https://insect-wrs2025.github.io/mission-timer-dashboard/
 - 接続手順（Pages → ローカルWSS）
   - バックエンドを上記のWSSで起動（8443/TLS）
   - 画面の「ROS2 Bridge」のURLを `wss://localhost:8443/ws`（または `wss://127.0.0.1:8443/ws`）にして「Connect」
